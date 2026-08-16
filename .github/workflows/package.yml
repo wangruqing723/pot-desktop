@@ -134,6 +134,13 @@ jobs:
             - name: Build and Package
               run: |
                   if [ "$GITHUB_EVENT_NAME" = 'workflow_dispatch' ]; then
+                    node <<'NODE'
+                  const fs = require('fs');
+                  const path = 'src-tauri/tauri.conf.json';
+                  const config = JSON.parse(fs.readFileSync(path, 'utf8'));
+                  config.tauri.updater.active = false;
+                  fs.writeFileSync(path, `${JSON.stringify(config, null, 4)}\n`);
+                  NODE
                     env -u TAURI_PRIVATE_KEY \
                       -u TAURI_KEY_PASSWORD \
                       -u APPLE_SIGNING_IDENTITY \
@@ -161,12 +168,12 @@ jobs:
                   sudo chmod +x src-tauri/resources/*
                   chmod +x src-tauri/resources/*
             - name: Change File Name
-              if: matrix.target == 'aarch64-apple-darwin'
+              if: github.event_name != 'workflow_dispatch' && matrix.target == 'aarch64-apple-darwin'
               run: |
                   sudo mv src-tauri/target/aarch64-apple-darwin/release/bundle/macos/pot.app.tar.gz src-tauri/target/aarch64-apple-darwin/release/bundle/macos/pot_${{needs.change-version.outputs.version}}_aarch64.app.tar.gz
                   sudo mv src-tauri/target/aarch64-apple-darwin/release/bundle/macos/pot.app.tar.gz.sig src-tauri/target/aarch64-apple-darwin/release/bundle/macos/pot_${{needs.change-version.outputs.version}}_aarch64.app.tar.gz.sig
             - name: Change File Name
-              if: matrix.target == 'x86_64-apple-darwin'
+              if: github.event_name != 'workflow_dispatch' && matrix.target == 'x86_64-apple-darwin'
               run: |
                   sudo mv src-tauri/target/x86_64-apple-darwin/release/bundle/macos/pot.app.tar.gz src-tauri/target/x86_64-apple-darwin/release/bundle/macos/pot_${{needs.change-version.outputs.version}}_x64.app.tar.gz
                   sudo mv src-tauri/target/x86_64-apple-darwin/release/bundle/macos/pot.app.tar.gz.sig src-tauri/target/x86_64-apple-darwin/release/bundle/macos/pot_${{needs.change-version.outputs.version}}_x64.app.tar.gz.sig
@@ -177,6 +184,7 @@ jobs:
                   path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
                   if-no-files-found: error
             - name: Upload Artifacts
+              if: github.event_name != 'workflow_dispatch'
               uses: actions/upload-artifact@v4
               with:
                   name: macos_${{ matrix.target }}_updater
