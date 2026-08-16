@@ -163,6 +163,8 @@
                 "recognize": "Recognize",
                 "collection": "Collection",
                 "least": "Please keep at least one",
+                "enable": "Enable",
+                "manual_translate": "Manual Translate",
                 "add_builtin_service": "Add Builtin Service",
                 "add_external_service": "Add Extension",
                 "add_service": "Add Service",
@@ -452,6 +454,7 @@
         },
         "translate": {
             "translate": "Translate",
+            "click_to_translate": "Click to translate",
             "add_collection_success": "Add to collection successfully",
             "recognizing": "Recognizing…",
             "speak": "Speak",

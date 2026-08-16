@@ -163,6 +163,8 @@
                 "recognize": "文字识别",
                 "collection": "生词本",
                 "least": "请至少保留一个",
+                "enable": "启用",
+                "manual_translate": "手动翻译",
                 "add_builtin_service": "添加内置服务",
                 "add_external_service": "添加外部插件",
                 "add_service": "添加服务",
@@ -452,6 +454,7 @@
         },
         "translate": {
             "translate": "翻译",
+            "click_to_translate": "点击翻译",
             "add_collection_success": "添加成功",
             "recognizing": "识别中…",
             "speak": "朗读",

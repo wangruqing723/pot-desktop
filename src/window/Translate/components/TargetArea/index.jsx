@@ -9,6 +9,7 @@ import {
     DropdownItem,
     DropdownMenu,
     DropdownTrigger,
+    Chip,
     Tooltip,
 } from '@nextui-org/react';
 import { BiCollapseVertical, BiExpandVertical } from 'react-icons/bi';
@@ -59,6 +60,8 @@ export default function TargetArea(props) {
         const instanceConfig = serviceInstanceConfigMap[instanceKey] ?? {};
         return getDisplayInstanceName(instanceConfig[INSTANCE_NAME_CONFIG_KEY], serviceNameSupplier);
     }
+    const currentServiceInstanceConfig = serviceInstanceConfigMap[currentTranslateServiceInstanceKey] ?? {};
+    const isManualTranslate = currentServiceInstanceConfig['manualTranslate'] ?? false;
 
     const [appFontSize] = useConfig('app_font_size', 16);
     const [collectionServiceList] = useConfig('collection_service_list', []);
@@ -67,6 +70,7 @@ export default function TargetArea(props) {
     const [historyDisable] = useConfig('history_disable', false);
     const [isLoading, setIsLoading] = useState(false);
     const [hide, setHide] = useState(true);
+    const [untranslated, setUntranslated] = useState(false);
 
     const [result, setResult] = useState('');
     const [error, setError] = useState('');
@@ -82,6 +86,8 @@ export default function TargetArea(props) {
     const [ttsPluginInfo, setTtsPluginInfo] = useState();
     const { t } = useTranslation();
     const textAreaRef = useRef();
+    const headerPointerStart = useRef(null);
+    const headerPointerMoved = useRef(false);
     const toastStyle = useToastStyle();
     const speak = useVoice();
     const theme = useTheme();
@@ -96,6 +102,12 @@ export default function TargetArea(props) {
     useEffect(() => {
         setResult('');
         setError('');
+        setUntranslated(false);
+        if (isManualTranslate) {
+            translateID[index] = nanoid();
+            setIsLoading(false);
+            setHide(true);
+        }
         if (
             sourceText.trim() !== '' &&
             sourceLanguage &&
@@ -111,7 +123,12 @@ export default function TargetArea(props) {
                     }
                 });
             }
-            translate();
+            if (isManualTranslate) {
+                setUntranslated(true);
+                setHide(true);
+            } else {
+                translate();
+            }
         }
     }, [
         sourceText,
@@ -121,6 +138,7 @@ export default function TargetArea(props) {
         hideWindow,
         currentTranslateServiceInstanceKey,
         clipboardMonitor,
+        isManualTranslate,
     ]);
 
     // todo: history panel use service instance key
@@ -163,6 +181,7 @@ export default function TargetArea(props) {
     const translate = async () => {
         let id = nanoid();
         translateID[index] = id;
+        const manualTranslate = serviceInstanceConfigMap[currentTranslateServiceInstanceKey]?.manualTranslate ?? false;
 
         const translateServiceName = getServiceName(currentTranslateServiceInstanceKey);
 
@@ -235,10 +254,16 @@ export default function TargetArea(props) {
                         if (translateID[index] !== id) return;
                         setError(e.toString());
                         setIsLoading(false);
+                        if (manualTranslate) {
+                            setHide(false);
+                        }
                     }
                 );
             } else {
                 setError('Language not supported');
+                if (manualTranslate) {
+                    setHide(false);
+                }
             }
         } else {
             const LanguageEnum = builtinServices[translateServiceName].Language;
@@ -308,13 +333,70 @@ export default function TargetArea(props) {
                             if (translateID[index] !== id) return;
                             setError(e.toString());
                             setIsLoading(false);
+                            if (manualTranslate) {
+                                setHide(false);
+                            }
                         }
                     );
             } else {
                 setError('Language not supported');
+                if (manualTranslate) {
+                    setHide(false);
+                }
             }
         }
     };
+
+    // rbd v13.1.1 的 dragHandleProps 自带 click 处理，会阻止拖拽结束后的 click。
+    // 因此用位移阈值在 pointerup 判定标题栏点击，保留 rbd 的原始 click 处理。
+    const triggerManualTranslation = () => {
+        if (!isManualTranslate || !untranslated || isLoading) {
+            return;
+        }
+        setUntranslated(false);
+        setResult('');
+        setError('');
+        setHide(true);
+        translate();
+    };
+
+    const handleHeaderPointerDown = (event) => {
+        if (!isManualTranslate || !untranslated || isLoading || (event.pointerType === 'mouse' && event.button !== 0)) {
+            return;
+        }
+        headerPointerStart.current = { x: event.clientX, y: event.clientY };
+        headerPointerMoved.current = false;
+    };
+
+    const handleHeaderPointerMove = (event) => {
+        if (headerPointerStart.current === null) {
+            return;
+        }
+        const deltaX = event.clientX - headerPointerStart.current.x;
+        const deltaY = event.clientY - headerPointerStart.current.y;
+        if (Math.hypot(deltaX, deltaY) > 5) {
+            headerPointerMoved.current = true;
+        }
+    };
+
+    const handleHeaderPointerUp = () => {
+        if (headerPointerStart.current === null) {
+            return;
+        }
+        const moved = headerPointerMoved.current;
+        headerPointerStart.current = null;
+        headerPointerMoved.current = false;
+        if (!moved) {
+            triggerManualTranslation();
+        }
+    };
+
+    const handleHeaderPointerCancel = () => {
+        headerPointerStart.current = null;
+        headerPointerMoved.current = false;
+    };
+
+    const canTriggerManualTranslation = isManualTranslate && untranslated && !isLoading;
 
     // hide empty textarea
     useEffect(() => {
@@ -380,17 +462,28 @@ export default function TargetArea(props) {
         >
             <Toaster />
             <CardHeader
-                className={`flex justify-between py-1 px-0 bg-content2 h-[30px] ${hide ? 'rounded-[10px]' : 'rounded-t-[10px]'}`}
                 {...drag}
+                className={`flex justify-between py-1 px-0 bg-content2 h-[30px] ${hide ? 'rounded-[10px]' : 'rounded-t-[10px]'} ${canTriggerManualTranslation ? 'cursor-pointer' : ''}`}
+                onPointerDown={handleHeaderPointerDown}
+                onPointerMove={handleHeaderPointerMove}
+                onPointerUp={handleHeaderPointerUp}
+                onPointerCancel={handleHeaderPointerCancel}
             >
                 {/* current service instance and available service instance to change */}
                 <div className='flex'>
-                    <Dropdown>
+                    <Dropdown
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onPointerUp={(event) => event.stopPropagation()}
+                        onClick={(event) => event.stopPropagation()}
+                    >
                         <DropdownTrigger>
                             <Button
                                 size='sm'
                                 variant='solid'
                                 className='bg-transparent'
+                                onPointerDown={(event) => event.stopPropagation()}
+                                onPointerUp={(event) => event.stopPropagation()}
+                                onClick={(event) => event.stopPropagation()}
                                 startContent={
                                     whetherPluginService(currentTranslateServiceInstanceKey) ? (
                                         <img
@@ -474,6 +567,15 @@ export default function TargetArea(props) {
                             marginLeft: '20px',
                         }}
                     />
+                    {canTriggerManualTranslation && (
+                        <Chip
+                            size='sm'
+                            variant='flat'
+                            className='my-auto ml-2 text-default-400'
+                        >
+                            {t('translate.click_to_translate')}
+                        </Chip>
+                    )}
                 </div>
                 {/* content collapse */}
                 <div className='flex'>
@@ -482,6 +584,9 @@ export default function TargetArea(props) {
                         isIconOnly
                         variant='light'
                         className='h-[20px] w-[20px]'
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onPointerUp={(event) => event.stopPropagation()}
+                        onClick={(event) => event.stopPropagation()}
                         onPress={() => setHide(!hide)}
                     >
                         {hide ? (
