@@ -199,23 +199,11 @@ jobs:
                   files: src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app*
 
     build-for-windows:
-        if: github.event_name != 'workflow_dispatch'
         needs: change-version
         strategy:
             fail-fast: false
             matrix:
-                platform: [windows-latest]
-                target: [x86_64-pc-windows-msvc, i686-pc-windows-msvc, aarch64-pc-windows-msvc]
-                include:
-                    - os: windows-latest
-                      target: x86_64-pc-windows-msvc
-                      toolchain: stable-x86_64-pc-windows-msvc
-                    - os: windows-latest
-                      target: i686-pc-windows-msvc
-                      toolchain: stable-i686-pc-windows-msvc
-                    - os: windows-latest
-                      target: aarch64-pc-windows-msvc
-                      toolchain: stable-aarch64-pc-windows-msvc
+                include: ${{ github.event_name == 'workflow_dispatch' && fromJSON('[{"platform":"windows-latest","target":"x86_64-pc-windows-msvc","toolchain":"stable-x86_64-pc-windows-msvc"}]') || fromJSON('[{"platform":"windows-latest","target":"x86_64-pc-windows-msvc","toolchain":"stable-x86_64-pc-windows-msvc"},{"platform":"windows-latest","target":"i686-pc-windows-msvc","toolchain":"stable-i686-pc-windows-msvc"},{"platform":"windows-latest","target":"aarch64-pc-windows-msvc","toolchain":"stable-aarch64-pc-windows-msvc"}]') }}
         runs-on: ${{ matrix.platform }}
         steps:
             - uses: actions/download-artifact@v4
@@ -241,9 +229,15 @@ jobs:
               run: pnpm prettier --write .
             - name: Build and Package
               run: |
-                  $env:TAURI_PRIVATE_KEY="${{ secrets.TAURI_PRIVATE_KEY }}"
-                  $env:TAURI_KEY_PASSWORD="${{ secrets.TAURI_KEY_PASSWORD }}"
-                  pnpm tauri build -b nsis,updater --target ${{ matrix.target }}
+                  if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+                      $env:TAURI_PRIVATE_KEY = $null
+                      $env:TAURI_KEY_PASSWORD = $null
+                      pnpm tauri build -b nsis --target ${{ matrix.target }}
+                  } else {
+                      $env:TAURI_PRIVATE_KEY="${{ secrets.TAURI_PRIVATE_KEY }}"
+                      $env:TAURI_KEY_PASSWORD="${{ secrets.TAURI_KEY_PASSWORD }}"
+                      pnpm tauri build -b nsis,updater --target ${{ matrix.target }}
+                  }
             - name: Upload Artifacts
               uses: actions/upload-artifact@v4
               with:
