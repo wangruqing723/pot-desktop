@@ -31,16 +31,22 @@ jobs:
                   sudo apt-get install -y git
             - id: outputstep
               run: |
-                  echo "VERSION=$(git describe --tags | sed 's/-[0-9]*-.*//g')" >> "$GITHUB_OUTPUT"
+                  if [ "$GITHUB_EVENT_NAME" = 'workflow_dispatch' ]; then
+                    VERSION=$(node -p "require('./package.json').version")
+                  else
+                    VERSION=$(git describe --tags | sed 's/-[0-9]*-.*//g')
+                  fi
+                  echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
             - name: Change Version for Windows
               run: |
-                  sed -i "s/\"version\":.*/\"version\": \"$(git describe --tags | sed 's/-[0-9]*-.*//g')\",/g" package.json
+                  VERSION="${{ steps.outputstep.outputs.VERSION }}"
+                  sed -i "s/\"version\":.*/\"version\": \"$VERSION\",/g" package.json
 
-                  sed -i "s/\"version\":.*/\"version\": \"$(git describe --tags | sed 's/-[0-9]*-.*//g')\"/g" src-tauri/tauri.conf.json
+                  sed -i "s/\"version\":.*/\"version\": \"$VERSION\"/g" src-tauri/tauri.conf.json
 
-                  sed -i "s/version = \"0.0.0\"/version = \"$(git describe --tags | sed 's/-[0-9]*-.*//g')\"/g" src-tauri/Cargo.toml
+                  sed -i "s/version = \"0.0.0\"/version = \"$VERSION\"/g" src-tauri/Cargo.toml
 
-                  echo $(git describe --tags | sed 's/-[0-9]*-.*//g')
+                  echo "$VERSION"
 
             - name: Upload Artifacts for Windows
               uses: actions/upload-artifact@v4
