@@ -20,3 +20,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# CodeGraph local index
+.codegraph
+
+# Claude Code local files (keep project instructions only)
+.claude/*
+!.claude/CLAUDE.md
