@@ -9,7 +9,6 @@ import {
     DropdownItem,
     DropdownMenu,
     DropdownTrigger,
-    Chip,
     Tooltip,
 } from '@nextui-org/react';
 import { BiCollapseVertical, BiExpandVertical } from 'react-icons/bi';
@@ -22,7 +21,7 @@ import { TbTransformFilled } from 'react-icons/tb';
 import { HiOutlineVolumeUp } from 'react-icons/hi';
 import { semanticColors } from '@nextui-org/theme';
 import toast, { Toaster } from 'react-hot-toast';
-import { MdContentCopy } from 'react-icons/md';
+import { MdContentCopy, MdTranslate } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import Database from 'tauri-plugin-sql-api';
 import { GiCycle } from 'react-icons/gi';
@@ -86,8 +85,6 @@ export default function TargetArea(props) {
     const [ttsPluginInfo, setTtsPluginInfo] = useState();
     const { t } = useTranslation();
     const textAreaRef = useRef();
-    const headerPointerStart = useRef(null);
-    const headerPointerMoved = useRef(false);
     const toastStyle = useToastStyle();
     const speak = useVoice();
     const theme = useTheme();
@@ -181,7 +178,6 @@ export default function TargetArea(props) {
     const translate = async () => {
         let id = nanoid();
         translateID[index] = id;
-        const manualTranslate = serviceInstanceConfigMap[currentTranslateServiceInstanceKey]?.manualTranslate ?? false;
 
         const translateServiceName = getServiceName(currentTranslateServiceInstanceKey);
 
@@ -254,16 +250,10 @@ export default function TargetArea(props) {
                         if (translateID[index] !== id) return;
                         setError(e.toString());
                         setIsLoading(false);
-                        if (manualTranslate) {
-                            setHide(false);
-                        }
                     }
                 );
             } else {
                 setError('Language not supported');
-                if (manualTranslate) {
-                    setHide(false);
-                }
             }
         } else {
             const LanguageEnum = builtinServices[translateServiceName].Language;
@@ -333,22 +323,16 @@ export default function TargetArea(props) {
                             if (translateID[index] !== id) return;
                             setError(e.toString());
                             setIsLoading(false);
-                            if (manualTranslate) {
-                                setHide(false);
-                            }
                         }
                     );
             } else {
                 setError('Language not supported');
-                if (manualTranslate) {
-                    setHide(false);
-                }
             }
         }
     };
 
-    // rbd v13.1.1 的 dragHandleProps 自带 click 处理，会阻止拖拽结束后的 click。
-    // 因此用位移阈值在 pointerup 判定标题栏点击，保留 rbd 的原始 click 处理。
+    // 手动翻译由标题栏上独立的「翻译」按钮触发：标题栏本身仍作为 react-beautiful-dnd 的拖拽把手。
+    // 之前让标题栏同时吃点击，在 macOS(WebKit) 上拖拽把手会丢失 mouseup，导致卡片"粘"在指针上、需点两次才松开。
     const triggerManualTranslation = () => {
         if (!isManualTranslate || !untranslated || isLoading) {
             return;
@@ -358,42 +342,6 @@ export default function TargetArea(props) {
         setError('');
         setHide(true);
         translate();
-    };
-
-    const handleHeaderPointerDown = (event) => {
-        if (!isManualTranslate || !untranslated || isLoading || (event.pointerType === 'mouse' && event.button !== 0)) {
-            return;
-        }
-        headerPointerStart.current = { x: event.clientX, y: event.clientY };
-        headerPointerMoved.current = false;
-    };
-
-    const handleHeaderPointerMove = (event) => {
-        if (headerPointerStart.current === null) {
-            return;
-        }
-        const deltaX = event.clientX - headerPointerStart.current.x;
-        const deltaY = event.clientY - headerPointerStart.current.y;
-        if (Math.hypot(deltaX, deltaY) > 5) {
-            headerPointerMoved.current = true;
-        }
-    };
-
-    const handleHeaderPointerUp = () => {
-        if (headerPointerStart.current === null) {
-            return;
-        }
-        const moved = headerPointerMoved.current;
-        headerPointerStart.current = null;
-        headerPointerMoved.current = false;
-        if (!moved) {
-            triggerManualTranslation();
-        }
-    };
-
-    const handleHeaderPointerCancel = () => {
-        headerPointerStart.current = null;
-        headerPointerMoved.current = false;
     };
 
     const canTriggerManualTranslation = isManualTranslate && untranslated && !isLoading;
@@ -463,27 +411,16 @@ export default function TargetArea(props) {
             <Toaster />
             <CardHeader
                 {...drag}
-                className={`flex justify-between py-1 px-0 bg-content2 h-[30px] ${hide ? 'rounded-[10px]' : 'rounded-t-[10px]'} ${canTriggerManualTranslation ? 'cursor-pointer' : ''}`}
-                onPointerDown={handleHeaderPointerDown}
-                onPointerMove={handleHeaderPointerMove}
-                onPointerUp={handleHeaderPointerUp}
-                onPointerCancel={handleHeaderPointerCancel}
+                className={`flex justify-between py-1 px-0 bg-content2 h-[30px] ${hide ? 'rounded-[10px]' : 'rounded-t-[10px]'}`}
             >
                 {/* current service instance and available service instance to change */}
                 <div className='flex'>
-                    <Dropdown
-                        onPointerDown={(event) => event.stopPropagation()}
-                        onPointerUp={(event) => event.stopPropagation()}
-                        onClick={(event) => event.stopPropagation()}
-                    >
+                    <Dropdown>
                         <DropdownTrigger>
                             <Button
                                 size='sm'
                                 variant='solid'
                                 className='bg-transparent'
-                                onPointerDown={(event) => event.stopPropagation()}
-                                onPointerUp={(event) => event.stopPropagation()}
-                                onClick={(event) => event.stopPropagation()}
                                 startContent={
                                     whetherPluginService(currentTranslateServiceInstanceKey) ? (
                                         <img
@@ -568,13 +505,15 @@ export default function TargetArea(props) {
                         }}
                     />
                     {canTriggerManualTranslation && (
-                        <Chip
+                        <Button
                             size='sm'
                             variant='flat'
-                            className='my-auto ml-2 text-default-400'
+                            className='my-auto ml-2 h-[24px] min-w-0 px-2 text-default-500'
+                            startContent={<MdTranslate className='text-[14px]' />}
+                            onPress={triggerManualTranslation}
                         >
                             {t('translate.click_to_translate')}
-                        </Chip>
+                        </Button>
                     )}
                 </div>
                 {/* content collapse */}
@@ -584,9 +523,6 @@ export default function TargetArea(props) {
                         isIconOnly
                         variant='light'
                         className='h-[20px] w-[20px]'
-                        onPointerDown={(event) => event.stopPropagation()}
-                        onPointerUp={(event) => event.stopPropagation()}
-                        onClick={(event) => event.stopPropagation()}
                         onPress={() => setHide(!hide)}
                     >
                         {hide ? (
@@ -597,10 +533,10 @@ export default function TargetArea(props) {
                     </Button>
                 </div>
             </CardHeader>
-            <animated.div style={{ ...springs }}>
+            <animated.div style={{ ...springs, overflow: 'hidden' }}>
                 <div ref={boundRef}>
                     {/* result content */}
-                    <CardBody className={`p-[12px] pb-0 ${hide && 'h-0 p-0'}`}>
+                    <CardBody className='p-[12px] pb-0'>
                         {typeof result === 'string' ? (
                             <textarea
                                 ref={textAreaRef}
@@ -733,9 +669,7 @@ export default function TargetArea(props) {
                             <></>
                         )}
                     </CardBody>
-                    <CardFooter
-                        className={`bg-content1 rounded-none rounded-b-[10px] flex px-[12px] p-[5px] ${hide && 'hidden'}`}
-                    >
+                    <CardFooter className='bg-content1 rounded-none rounded-b-[10px] flex px-[12px] p-[5px]'>
                         <ButtonGroup>
                             {/* speak button */}
                             <Tooltip content={t('translate.speak')}>
