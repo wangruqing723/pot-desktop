@@ -461,7 +461,16 @@
             "copy": "Copy",
             "retry": "Try again",
             "delete_newline": "Delete Newline",
-            "translate_back": "Translation back to the original"
+            "translate_back": "Translation back to the original",
+            "copy_as": "Copy as…",
+            "case_format": {
+                "original": "Original",
+                "camel": "camelCase",
+                "pascal": "PascalCase",
+                "snake": "snake_case",
+                "constant": "CONSTANT_CASE",
+                "kebab": "kebab-case"
+            }
         },
         "recognize": {
             "recognize": "Recognize",

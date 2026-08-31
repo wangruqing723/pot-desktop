@@ -23,13 +23,15 @@ import he_IL from './locales/he_IL.json';
 // http://www.lingoes.net/zh/translator/langcode.htm
 
 i18n.use(initReactI18next).init({
+    // i18next 的 getFallbackCodes 命中显式条目后就直接返回、不再并入 default，
+    // 所以每条链尾都要显式补 'en'，否则这些语言的缺失键会显示成键名而非回落英文
     fallbackLng: {
-        zh_tw: ['zh_cn'],
-        zh_cn: ['zh_tw'],
-        pt_pt: ['pt_br'],
-        pt_br: ['pt_pt'],
-        nb_no: ['nn_no'],
-        nn_no: ['nb_no'],
+        zh_tw: ['zh_cn', 'en'],
+        zh_cn: ['zh_tw', 'en'],
+        pt_pt: ['pt_br', 'en'],
+        pt_br: ['pt_pt', 'en'],
+        nb_no: ['nn_no', 'en'],
+        nn_no: ['nb_no', 'en'],
         default: ['en'],
     },
     debug: false,

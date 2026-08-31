@@ -83,6 +83,13 @@ export default function Translate() {
     const [pined, setPined] = useState(false);
     const [pluginList, setPluginList] = useState(null);
     const [serviceInstanceConfigMap, setServiceInstanceConfigMap] = useState(null);
+    // 快捷键目标卡片：第一个已启用实例（不是排在第一位的实例，后者可能处于关闭状态）
+    const shortcutTargetKey =
+        translateServiceInstanceList !== null && serviceInstanceConfigMap !== null
+            ? translateServiceInstanceList.find(
+                  (serviceInstanceKey) => (serviceInstanceConfigMap[serviceInstanceKey] ?? {})['enable'] ?? true
+              ) ?? null
+            : null;
     const reorder = (list, startIndex, endIndex) => {
         const result = Array.from(list);
         const [removed] = result.splice(startIndex, 1);
@@ -324,6 +331,9 @@ export default function Translate() {
                                                                     }
                                                                     pluginList={pluginList}
                                                                     serviceInstanceConfigMap={serviceInstanceConfigMap}
+                                                                    isShortcutTarget={
+                                                                        serviceInstanceKey === shortcutTargetKey
+                                                                    }
                                                                 />
                                                                 <Spacer y={2} />
                                                             </div>

@@ -21,7 +21,7 @@ import { TbTransformFilled } from 'react-icons/tb';
 import { HiOutlineVolumeUp } from 'react-icons/hi';
 import { semanticColors } from '@nextui-org/theme';
 import toast, { Toaster } from 'react-hot-toast';
-import { MdContentCopy, MdTranslate } from 'react-icons/md';
+import { MdContentCopy, MdKeyboardArrowDown, MdTranslate } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import Database from 'tauri-plugin-sql-api';
 import { GiCycle } from 'react-icons/gi';
@@ -38,6 +38,7 @@ import { sourceTextAtom, detectLanguageAtom } from '../SourceArea';
 import { invoke_plugin } from '../../../../utils/invoke_plugin';
 import * as builtinServices from '../../../../services/translate';
 import * as builtinTtsServices from '../../../../services/tts';
+import { caseFormatList, convertCase } from '../../../../utils/case_convert';
 
 import { info, error as logError } from 'tauri-plugin-log-api';
 import {
@@ -52,7 +53,15 @@ import {
 let translateID = [];
 
 export default function TargetArea(props) {
-    const { index, name, translateServiceInstanceList, pluginList, serviceInstanceConfigMap, ...drag } = props;
+    const {
+        index,
+        name,
+        translateServiceInstanceList,
+        pluginList,
+        serviceInstanceConfigMap,
+        isShortcutTarget,
+        ...drag
+    } = props;
 
     const [currentTranslateServiceInstanceKey, setCurrentTranslateServiceInstanceKey] = useState(name);
     function getInstanceName(instanceKey, serviceNameSupplier) {
@@ -355,6 +364,38 @@ export default function TargetArea(props) {
             }
         }
     }, [result]);
+
+    const isResultEmpty = typeof result !== 'string' || result === '';
+
+    const copyAs = (format) => {
+        if (isResultEmpty) {
+            return;
+        }
+        writeText(convertCase(result, format));
+    };
+
+    // 复制为…的窗口内快捷键：Alt+Shift+1..6，只有快捷键目标卡片响应
+    useEffect(() => {
+        if (!isShortcutTarget) {
+            return;
+        }
+        const handleKeyDown = (event) => {
+            if (!event.altKey || !event.shiftKey || !event.code.startsWith('Digit')) {
+                return;
+            }
+            const position = Number(event.code.slice('Digit'.length));
+            const format = caseFormatList[position - 1];
+            if (format === undefined) {
+                return;
+            }
+            event.preventDefault();
+            copyAs(format);
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isShortcutTarget, result]);
 
     // refresh tts config
     useEffect(() => {
@@ -701,6 +742,42 @@ export default function TargetArea(props) {
                                     <MdContentCopy className='text-[16px]' />
                                 </Button>
                             </Tooltip>
+                            {/* copy as button */}
+                            <Dropdown>
+                                <Tooltip content={t('translate.copy_as')}>
+                                    <div className='flex'>
+                                        <DropdownTrigger>
+                                            <Button
+                                                isIconOnly
+                                                variant='light'
+                                                size='sm'
+                                                className='min-w-[20px] w-[20px]'
+                                                isDisabled={isResultEmpty}
+                                            >
+                                                <MdKeyboardArrowDown className='text-[16px]' />
+                                            </Button>
+                                        </DropdownTrigger>
+                                    </div>
+                                </Tooltip>
+                                <DropdownMenu
+                                    aria-label={t('translate.copy_as')}
+                                    className='max-h-[40vh] overflow-y-auto'
+                                    onAction={(key) => {
+                                        copyAs(key);
+                                    }}
+                                >
+                                    {caseFormatList.map((format, position) => (
+                                        <DropdownItem
+                                            key={format}
+                                            description={convertCase(result, format)}
+                                            classNames={{ description: 'truncate' }}
+                                            shortcut={`Alt+Shift+${position + 1}`}
+                                        >
+                                            {t(`translate.case_format.${format}`)}
+                                        </DropdownItem>
+                                    ))}
+                                </DropdownMenu>
+                            </Dropdown>
                             {/* translate back button */}
                             <Tooltip content={t('translate.translate_back')}>
                                 <Button

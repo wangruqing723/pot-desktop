@@ -461,7 +461,16 @@
             "copy": "复制",
             "retry": "重试",
             "delete_newline": "删除换行",
-            "translate_back": "翻译回原文"
+            "translate_back": "翻译回原文",
+            "copy_as": "复制为…",
+            "case_format": {
+                "original": "原样",
+                "camel": "小驼峰 camelCase",
+                "pascal": "大驼峰 PascalCase",
+                "snake": "蛇形 snake_case",
+                "constant": "常量 CONSTANT_CASE",
+                "kebab": "短横线 kebab-case"
+            }
         },
         "recognize": {
             "recognize": "重新识别",
