@@ -36,7 +36,8 @@
 - [x] T7 默认路径回归自查 | P1 | 20min | T6
   对照 DESIGN 第 5 节与第 6 节「不动」清单，逐行核对开关关闭时 `handleNewText` 各分支、`keyDown`、清空按钮、`Alt+Shift+U` 与改动前等价。
 
-- [ ] T8 CI 编译打包 | P0 | 15min | T7 + 用户确认提交
+- [x] T8 CI 编译打包 | P0 | 15min | T7 + 用户确认提交
+  已完成：commit `3e48498`，run https://github.com/wangruqing723/pot-desktop/actions/runs/39438187902 ，macOS arm64 与 Windows x64 构建均成功，日志中无与新代码相关的 warning。产物 `macos_aarch64-apple-darwin_dmg`、`windows_x86_64-pc-windows-msvc`。
   用户确认提交后：`git commit` → `git push origin feat/manual-translate` → `gh workflow run package.yml --ref feat/manual-translate -f package_scope=macos-arm64` → `gh run watch` 跟到结束。
   macOS arm64 与 Windows x64 两个构建 job 均成功即勾选；失败则读日志修复后重跑，修复提交同样先经用户确认。回报 run 链接与 dmg 产物名。
 
