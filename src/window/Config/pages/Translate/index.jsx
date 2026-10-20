@@ -24,6 +24,7 @@ export default function Translate() {
     const [dynamicTranslate, setDynamicTranslate] = useConfig('dynamic_translate', false);
     const [deleteNewline, setDeleteNewline] = useConfig('translate_delete_newline', false);
     const [rememberLanguage, setRememberLanguage] = useConfig('translate_remember_language', false);
+    const [echoLastSource, setEchoLastSource] = useConfig('translate_echo_last_source', false);
     // const [translateFontSize, setTranslateFontSize] = useConfig('translate_font_size', 16);
     const [windowPosition, setWindowPosition] = useConfig('translate_window_position', 'mouse');
     const [rememberWindowSize, setRememberWindowSize] = useConfig('translate_remember_window_size', false);
@@ -207,6 +208,21 @@ export default function Translate() {
                                 isSelected={rememberLanguage}
                                 onValueChange={(v) => {
                                     setRememberLanguage(v);
+                                }}
+                            />
+                        )}
+                    </div>
+                    <div className='config-item'>
+                        <h3 className='my-auto mx-0'>{t('config.translate.echo_last_source')}</h3>
+                        {echoLastSource !== null && (
+                            <Switch
+                                isSelected={echoLastSource}
+                                onValueChange={(v) => {
+                                    setEchoLastSource(v);
+                                    // 由开转关时清掉已记内容，避免再次打开时冒出关闭前的旧文本
+                                    if (!v) {
+                                        invoke('set_last_source_text', { text: '' });
+                                    }
                                 }}
                             />
                         )}

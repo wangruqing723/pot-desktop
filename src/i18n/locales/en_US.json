@@ -107,6 +107,7 @@
                 "dynamic_translate": "Dynamic Translation",
                 "delete_newline": "Delete Newline",
                 "remember_language": "Remember Target Language",
+                "echo_last_source": "Show last source text on Text Translation",
                 "font_size": {
                     "title": "Font Size",
                     "10": "Very Very Small (10px)",

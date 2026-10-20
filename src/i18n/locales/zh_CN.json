@@ -107,6 +107,7 @@
                 "dynamic_translate": "动态翻译",
                 "delete_newline": "自动删除换行",
                 "remember_language": "记住目标语言",
+                "echo_last_source": "输入翻译时回显上次原文",
                 "font_size": {
                     "title": "字体大小",
                     "10": "极小 (10px)",

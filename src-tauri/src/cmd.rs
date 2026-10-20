@@ -1,6 +1,7 @@
 use crate::config::get;
 use crate::config::StoreWrapper;
 use crate::error::Error;
+use crate::LastSourceTextWrapper;
 use crate::StringWrapper;
 use crate::APP;
 use log::{error, info};
@@ -11,6 +12,18 @@ use tauri::Manager;
 #[tauri::command]
 pub fn get_text(state: tauri::State<StringWrapper>) -> String {
     return state.0.lock().unwrap().to_string();
+}
+
+// 读取上次源文本（输入翻译回显用）
+#[tauri::command]
+pub fn get_last_source_text(state: tauri::State<LastSourceTextWrapper>) -> String {
+    state.0.lock().unwrap().to_string()
+}
+
+// 记录上次源文本；传空串即清空
+#[tauri::command]
+pub fn set_last_source_text(text: String, state: tauri::State<LastSourceTextWrapper>) {
+    state.0.lock().unwrap().replace_range(.., &text);
 }
 
 #[tauri::command]

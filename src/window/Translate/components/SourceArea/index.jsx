@@ -42,12 +42,23 @@ export default function SourceArea(props) {
     const [ttsServiceList] = useConfig('tts_service_list', ['lingva_tts']);
     const [hideWindow] = useConfig('translate_hide_window', false);
     const [hideSource] = useConfig('hide_source', false);
+    const [echoLastSource] = useConfig('translate_echo_last_source', false);
     const [ttsPluginInfo, setTtsPluginInfo] = useState();
     const [windowType, setWindowType] = useState('[SELECTION_TRANSLATE]');
+    // 本窗口是否已定下源文本框的初始内容：ref 供 new_text 监听里读最新值（监听闭包可能陈旧），state 用来触发记录 effect
+    const handledRef = useRef(false);
+    const [recordReady, setRecordReady] = useState(false);
+    // 自增即触发一次「聚焦并全选源文本框」
+    const [selectAllTick, setSelectAllTick] = useState(0);
     const toastStyle = useToastStyle();
     const { t } = useTranslation();
     const textAreaRef = useRef();
     const speak = useVoice();
+
+    const markHandled = () => {
+        handledRef.current = true;
+        setRecordReady(true);
+    };
 
     const handleNewText = async (text) => {
         text = text.trim();
@@ -57,15 +68,33 @@ export default function SourceArea(props) {
             appWindow.show();
             appWindow.setFocus();
         }
-        // 清空检测语言
-        setDetectLanguage('');
-        if (text === '[INPUT_TRANSLATE]') {
+        const isInputTranslate = text === '[INPUT_TRANSLATE]';
+        // 回显开关在这里现读 store：new_text 监听的闭包可能拿着旧的配置值
+        const echoEnabled = isInputTranslate && ((await store.get('translate_echo_last_source')) ?? false);
+        // 回显开启且窗口没关时保留源文本与卡片，检测语言也要保留（卡片的第二目标语言判定与回译要用它）
+        const keepCurrent = echoEnabled && handledRef.current;
+        if (!keepCurrent) {
+            // 清空检测语言
+            setDetectLanguage('');
+        }
+        if (isInputTranslate) {
             setWindowType('[INPUT_TRANSLATE]');
             appWindow.show();
             appWindow.setFocus();
-            setSourceText('', true);
+            if (!echoEnabled) {
+                setSourceText('', true);
+            } else if (!keepCurrent) {
+                // 新窗口：回显上次源文本，只填文本、不提交
+                setSourceText(await invoke('get_last_source_text'));
+            }
+            markHandled();
+            if (echoEnabled) {
+                setSelectAllTick((tick) => tick + 1);
+            }
         } else if (text === '[IMAGE_TRANSLATE]') {
             setWindowType('[IMAGE_TRANSLATE]');
+            // 识别发起前源文本框为空，此刻关窗记下的就是空
+            markHandled();
             const base64 = await invoke('get_base64');
             const serviceInstanceKey = recognizeServiceList[0];
             if (getServiceSouceType(serviceInstanceKey) === ServiceSourceType.PLUGIN) {
@@ -159,6 +188,7 @@ export default function SourceArea(props) {
             } else {
                 setSourceText(newText);
             }
+            markHandled();
             detect_language(newText).then(() => {
                 syncSourceText();
             });
@@ -253,6 +283,32 @@ export default function SourceArea(props) {
         textAreaRef.current.style.height = '50px';
         textAreaRef.current.style.height = textAreaRef.current.scrollHeight + 'px';
     }, [sourceText]);
+
+    // 记录上次源文本：逐字写入、不防抖，任何关窗方式都不依赖关闭钩子；
+    // recordReady 之前不写，避免挂载时的初始空串覆盖已记内容
+    useEffect(() => {
+        if (echoLastSource && recordReady) {
+            invoke('set_last_source_text', { text: sourceText });
+        }
+    }, [sourceText, echoLastSource, recordReady]);
+
+    // 开关由开转关时本窗口再清一次：配置页的清空先于本窗口收到变更（useConfig 写入有 500ms 防抖），
+    // 这段间隙里的输入会把内容重新记回去
+    const prevEchoLastSourceRef = useRef(echoLastSource);
+    useEffect(() => {
+        if (prevEchoLastSourceRef.current === true && echoLastSource === false) {
+            invoke('set_last_source_text', { text: '' });
+        }
+        prevEchoLastSourceRef.current = echoLastSource;
+    }, [echoLastSource]);
+
+    // 回显后聚焦并全选；放在 effect 里，保证在新值渲染之后执行
+    useEffect(() => {
+        if (selectAllTick > 0) {
+            textAreaRef.current.focus();
+            textAreaRef.current.select();
+        }
+    }, [selectAllTick]);
 
     const detect_language = async (text) => {
         setDetectLanguage(await detect(text));

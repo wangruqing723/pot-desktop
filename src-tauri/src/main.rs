@@ -41,6 +41,9 @@ pub static APP: OnceCell<tauri::AppHandle> = OnceCell::new();
 // Text to be translated
 pub struct StringWrapper(pub Mutex<String>);
 
+// 上次源文本：翻译窗口关闭时源文本框里剩下的内容，仅存内存，供输入翻译回显
+pub struct LastSourceTextWrapper(pub Mutex<String>);
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _, cwd| {
@@ -85,6 +88,7 @@ fn main() {
                 config_window();
             }
             app.manage(StringWrapper(Mutex::new("".to_string())));
+            app.manage(LastSourceTextWrapper(Mutex::new("".to_string())));
             // Update Tray Menu
             update_tray(app.app_handle(), "".to_string(), "".to_string());
             // Start http server
@@ -130,6 +134,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             reload_store,
             get_text,
+            get_last_source_text,
+            set_last_source_text,
             cut_image,
             get_base64,
             copy_img,
